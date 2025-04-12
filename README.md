@@ -18,6 +18,6 @@ Meteorological data sets are stored in dictonary that key is "variable_depthTop,
 Original temporal resolution of the ISMN is 1 hour. Repo can calculate daily mean for soil moisture and temperature and accumulation for precipitation using the parameter daily_hourly. 
 Currently only the ISMN mask flag "G" is used for the quality consideration.
 For daily conversion, if missing hours bigger than 8 hours that day is flagges as np.nan (It should be easily change if is necessary)
-Some stations have multiple sensors for each depth. For example three sensor "A", "B", and "C" for soil moisture measurement at  5cm. Code probably overrates and gets the latest "C" sensor for depth = 5cm. 
+Some stations have multiple sensors for each depth. For example three sensor "A", "B", and "C" for soil moisture measurement at  5cm. Code probably over-writes and gets the latest "C" sensor for depth = 5cm. 
 
 
