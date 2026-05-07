@@ -59,13 +59,15 @@ class DataHandler:
                 return df2
             elif daily_hourly == "daily":
                 df = pd.DataFrame()
-                dates = list((pd.date_range(date[0].split("_")[0], date[-1].split("_")[0])).strftime('%Y/%m/%d'))
+                dates = list((pd.date_range(date[0].split(" ")[0], date[-1].split(" ")[0])).strftime('%Y/%m/%d'))
                 df2.loc[date, "data"] = data
                 df2.loc[date, "valid"] = valid
                 if file.split("_")[3] == "p":
                     daily_data = np.nansum(df2.loc[:, "data"].values.reshape(int(len(df2) / 24), 24), axis=1)
                 else:
                     daily_data = np.nanmean(df2.loc[:, "data"].values.reshape(int(len(df2) / 24), 24), axis=1)
+
+                df2["valid"] = df2["valid"].fillna(False) 
 
                 logic = np.sum(df2.loc[:, "valid"].values.reshape(int(len(df2) / 24), 24), axis=1)
                 daily_data[logic < 8] = np.nan
@@ -78,11 +80,37 @@ class DataHandler:
     def get_data(self, daily_hourly="hourly") -> dict:
         soil_data_dict = {}
         files = os.listdir(self.full_path)
+        
+        # Filter out CSVs and sort to try and read them in chronological order
         sm_files = sorted(list(filter(lambda x: "csv" not in x, files)))
+        
         for file in sm_files:
             splits = file.split("_")
             param = splits[3]
-            soil_data_dict[f"{param}_{splits[4]}-{splits[5]}"] = self.read_ismn_file(file, daily_hourly)
+            dict_key = f"{param}_{splits[4]}-{splits[5]}"
+            
+            # Read the current file
+            df_new = self.read_ismn_file(file, daily_hourly)
+            
+            # Check if this parameter/depth combination already exists
+            if dict_key in soil_data_dict:
+                # Concatenate the new data to the existing data
+                soil_data_dict[dict_key] = pd.concat([soil_data_dict[dict_key], df_new])
+            else:
+                # First time seeing this combination, create the entry
+                soil_data_dict[dict_key] = df_new
+
+        # Optional but highly recommended cleanup step:
+        # If files overlap or were read out of order, sort the index and drop duplicate dates
+        for key in soil_data_dict.keys():
+            # Ensure the index is treated as datetime for proper sorting
+            soil_data_dict[key].index = pd.to_datetime(soil_data_dict[key].index)
+            
+            # Sort chronologically
+            soil_data_dict[key] = soil_data_dict[key].sort_index()
+            
+            # Drop duplicate rows (keeping the first one it finds) in case files had overlapping dates
+            soil_data_dict[key] = soil_data_dict[key][~soil_data_dict[key].index.duplicated(keep='first')]
 
         return soil_data_dict
 
